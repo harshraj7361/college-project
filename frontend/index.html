@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="AI PDF Notes Generator - Generate separate, detailed topic-wise notes from any PDF using PyMuPDF and Gemini AI.">
+  <title>PDF Notes Generator | Smart AI Study Companion</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <!-- Ambient glow orbs -->
+  <div class="glow-orb orb-1"></div>
+  <div class="glow-orb orb-2"></div>
+
+  <!-- ── Header ─────────────────────────────────────────────────────────── -->
+  <header class="app-header">
+    <div class="header-container">
+      <div class="brand">
+        <div class="logo-icon">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+            <polyline points="14 2 14 8 20 8"></polyline>
+            <line x1="16" y1="13" x2="8" y2="13"></line>
+            <line x1="16" y1="17" x2="8" y2="17"></line>
+            <polyline points="10 9 9 9 8 9"></polyline>
+          </svg>
+        </div>
+        <div class="brand-text">
+          <h1>PDF Notes Generator</h1>
+          <span class="badge project-badge">College Minor Project</span>
+        </div>
+      </div>
+
+      <div class="header-actions">
+        <button id="apiKeyToggleBtn" class="btn btn-secondary btn-sm" title="Configure Gemini API Key">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="7.5" cy="15.5" r="5.5"></circle>
+            <path d="m21 2-9.6 9.6"></path>
+            <path d="m15.5 7.5 3 3L22 7l-3-3"></path>
+          </svg>
+          <span id="apiStatusLabel">API Key</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- ── API Key Bar ─────────────────────────────────────────────────────── -->
+  <div id="apiKeyBar" class="api-key-bar hidden">
+    <div class="api-key-inner">
+      <div class="api-key-info">
+        <label for="customApiKeyInput"><strong>Google Gemini API Key</strong> (Optional — auto-reads from <code>.env</code> if blank):</label>
+        <span class="api-help">Get a free key at <a href="https://aistudio.google.com/" target="_blank" rel="noopener">Google AI Studio</a></span>
+      </div>
+      <div class="api-key-input-group">
+        <input type="password" id="customApiKeyInput" placeholder="AIzaSy... (leave blank to use .env or built-in engine)">
+        <button id="saveApiKeyBtn" class="btn btn-primary btn-sm">Save</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Main ───────────────────────────────────────────────────────────── -->
+  <main class="main-content">
+
+    <!-- Hero -->
+    <section class="hero-section">
+      <h2 class="hero-title">Topic-by-Topic <span class="gradient-text">Smart Study Notes</span></h2>
+      <p class="hero-subtitle">
+        Upload any PDF. PyMuPDF detects every chapter and heading, and AI writes separate, detailed notes for each topic — so nothing gets lost or skipped.
+      </p>
+    </section>
+
+    <!-- Upload Card -->
+    <section class="card upload-card" id="uploadCard">
+      <div class="drop-zone" id="dropZone">
+        <input type="file" id="pdfFileInput" accept=".pdf,application/pdf" class="file-input">
+
+        <div class="drop-zone-content" id="dropZoneContent">
+          <div class="upload-icon-circle">
+            <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+              <polyline points="17 8 12 3 7 8"></polyline>
+              <line x1="12" y1="3" x2="12" y2="15"></line>
+            </svg>
+          </div>
+          <h3 class="drop-title">Choose a PDF or drag &amp; drop it here</h3>
+          <p class="drop-desc">Lecture notes, textbooks, research papers — all supported (Max 15 MB)</p>
+          <button type="button" class="btn btn-outline" id="browseFileBtn">Browse Files</button>
+        </div>
+
+        <div class="selected-file-chip hidden" id="selectedFileChip">
+          <div class="file-chip-icon">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+              <polyline points="14 2 14 8 20 8"></polyline>
+            </svg>
+          </div>
+          <div class="file-chip-info">
+            <span class="file-name" id="selectedFileName">sample.pdf</span>
+            <span class="file-size" id="selectedFileSize">0 KB</span>
+          </div>
+          <button type="button" class="btn-icon remove-file-btn" id="removeFileBtn" title="Remove file">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="18" y1="6" x2="6" y2="18"></line>
+              <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      <div class="control-bar">
+        <div class="option-group">
+          <label for="noteStyleSelect" class="option-label">Note Style:</label>
+          <select id="noteStyleSelect" class="select-control">
+            <option value="standard" selected>Standard Revision Notes (Recommended)</option>
+            <option value="concise">Quick Summary (Concise Bullets)</option>
+            <option value="detailed">In-Depth Study Notes (Detailed)</option>
+          </select>
+        </div>
+
+        <button type="button" id="generateBtn" class="btn btn-primary btn-generate" disabled>
+          <span class="btn-icon-inline">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
+            </svg>
+          </span>
+          <span id="generateBtnText">Generate Notes</span>
+        </button>
+      </div>
+
+      <div class="sample-hint">
+        <span>Need a test file?</span>
+        <button type="button" id="loadSampleBtn" class="link-btn">Load bundled Operating Systems sample PDF (5 topics)</button>
+      </div>
+    </section>
+
+    <!-- Loading Card -->
+    <section class="card loading-card hidden" id="loadingCard">
+      <div class="spinner-container">
+        <div class="pulse-ring"></div>
+        <div class="spinner"></div>
+      </div>
+      <h3 class="loading-title">Processing Document...</h3>
+      <p class="loading-step" id="loadingStep">Reading PDF pages with PyMuPDF...</p>
+      <div class="progress-bar-container">
+        <div class="progress-bar" id="progressBar"></div>
+      </div>
+    </section>
+
+    <!-- Error Alert -->
+    <div class="alert-box error-alert hidden" id="errorAlert">
+      <div class="alert-icon">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="10"></circle>
+          <line x1="12" y1="8" x2="12" y2="12"></line>
+          <line x1="12" y1="16" x2="12.01" y2="16"></line>
+        </svg>
+      </div>
+      <div class="alert-content">
+        <h4 class="alert-title">Processing Error</h4>
+        <p class="alert-message" id="errorMessage">Something went wrong.</p>
+      </div>
+      <button type="button" class="btn-icon close-alert-btn" id="closeAlertBtn" title="Dismiss">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <line x1="18" y1="6" x2="6" y2="18"></line>
+          <line x1="6" y1="6" x2="18" y2="18"></line>
+        </svg>
+      </button>
+    </div>
+
+    <!-- ── Notes Output Section ────────────────────────────────────────────── -->
+    <section class="notes-output hidden" id="notesOutput">
+
+      <!-- Document header bar -->
+      <div class="notes-doc-header">
+        <div class="notes-doc-info">
+          <span class="badge notes-badge">Generated Notes</span>
+          <h3 class="document-name" id="docNameDisplay">document.pdf</h3>
+          <div class="meta-pills">
+            <span class="meta-pill" id="pageCountPill">📄 0 Pages</span>
+            <span class="meta-pill" id="wordCountPill">📝 0 Words</span>
+            <span class="meta-pill" id="topicCountPill">📚 0 Topics</span>
+            <span class="meta-pill engine-pill" id="enginePill">⚡ Engine</span>
+          </div>
+        </div>
+        <div class="notes-actions">
+          <button type="button" id="copyNotesBtn" class="btn btn-secondary btn-sm">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+              <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+            </svg>
+            <span id="copyBtnText">Copy All</span>
+          </button>
+          <button type="button" id="downloadTxtBtn" class="btn btn-primary btn-sm">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+              <polyline points="7 10 12 15 17 10"></polyline>
+              <line x1="12" y1="15" x2="12" y2="3"></line>
+            </svg>
+            Download .txt
+          </button>
+          <button type="button" id="openChatBtn" class="btn btn-secondary btn-sm" title="Ask Questions About this PDF">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+            </svg>
+            <span>Ask PDF</span>
+          </button>
+          <button type="button" id="resetBtn" class="btn btn-ghost btn-sm">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="1 4 1 10 7 10"></polyline>
+              <path d="M20.49 9A9 9 0 0 0 5.64 5.64L1 10"></path>
+            </svg>
+            New PDF
+          </button>
+        </div>
+      </div>
+
+      <!-- ── View Tabs: Topic Notes vs Ask Questions ─────────────────────── -->
+      <div class="view-tabs-container">
+        <div class="view-tabs" role="tablist">
+          <button type="button" class="view-tab active" id="tabTopicNotes" role="tab" aria-selected="true" aria-controls="notesBodyLayout">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
+              <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
+            </svg>
+            <span>Topic Notes</span>
+          </button>
+          <button type="button" class="view-tab" id="tabAskPdf" role="tab" aria-selected="false" aria-controls="chatSection">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+            </svg>
+            <span>Ask Questions About PDF</span>
+            <span class="tab-badge">Q&amp;A Chat</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Two-column layout: Topic Nav Sidebar + Content Area -->
+      <div class="notes-body-layout" id="notesBodyLayout">
+
+        <!-- ── LEFT: Topic Navigation Sidebar ──────────────────────────── -->
+        <aside class="topic-nav" id="topicNav">
+          <div class="topic-nav-header">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="8" y1="6" x2="21" y2="6"></line>
+              <line x1="8" y1="12" x2="21" y2="12"></line>
+              <line x1="8" y1="18" x2="21" y2="18"></line>
+              <line x1="3" y1="6" x2="3.01" y2="6"></line>
+              <line x1="3" y1="12" x2="3.01" y2="12"></line>
+              <line x1="3" y1="18" x2="3.01" y2="18"></line>
+            </svg>
+            <span>Topics</span>
+          </div>
+          <!-- Topic links injected by JS -->
+          <nav id="topicNavList" class="topic-nav-list"></nav>
+
+          <!-- Overall Summary link at bottom -->
+          <div class="topic-nav-footer">
+            <a href="#section-overall-summary" class="topic-nav-item summary-link" id="summaryNavLink">
+              <span class="topic-nav-icon">📋</span>
+              <span>Overall Summary</span>
+            </a>
+          </div>
+        </aside>
+
+        <!-- ── RIGHT: Notes Content ──────────────────────────────────────── -->
+        <div class="notes-panels" id="notesPanels">
+          <!-- Individual topic cards injected by JS -->
+        </div>
+
+      </div>
+
+      <!-- ── Chat Section: Ask Questions About PDF ────────────────────── -->
+      <div class="chat-section hidden" id="chatSection">
+        <div class="chat-card">
+          <!-- Chat Card Header -->
+          <div class="chat-header">
+            <div class="chat-header-info">
+              <span class="chat-status-pulse"></span>
+              <div>
+                <h4 class="chat-title">Ask Questions About PDF</h4>
+                <p class="chat-subtitle" id="chatDocSubtitle">Answers are generated strictly from the uploaded PDF's content.</p>
+              </div>
+            </div>
+            <div class="chat-header-actions">
+              <button type="button" id="clearChatBtn" class="btn btn-ghost btn-xs" title="Clear chat history">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <polyline points="3 6 5 6 21 6"></polyline>
+                  <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                </svg>
+                <span>Clear Chat</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Suggested Quick Questions -->
+          <div class="chat-suggestions-bar">
+            <span class="suggestions-label">Suggestions:</span>
+            <div class="suggestions-chips" id="suggestionsChips">
+              <button type="button" class="suggestion-chip" data-question="What are the main topics covered in this document?">Main topics?</button>
+              <button type="button" class="suggestion-chip" data-question="Explain the most important concepts in simple terms.">Key concepts?</button>
+              <button type="button" class="suggestion-chip" data-question="List the key definitions and terms explained in this PDF.">Key definitions?</button>
+            </div>
+          </div>
+
+          <!-- Chat Stream Messages -->
+          <div class="chat-messages-container" id="chatMessagesContainer">
+            <!-- Messages injected dynamically by JS -->
+          </div>
+
+          <!-- Chat Input Bar -->
+          <div class="chat-input-bar">
+            <form id="chatForm" class="chat-form">
+              <div class="chat-input-box">
+                <textarea
+                  id="chatInput"
+                  class="chat-input"
+                  placeholder="Ask any question about this PDF... (e.g. 'What is CPU scheduling?')"
+                  rows="1"
+                  maxlength="1000"
+                ></textarea>
+                <button type="submit" id="chatSendBtn" class="btn btn-primary chat-send-btn" title="Send question">
+                  <span id="chatSendIcon">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <line x1="22" y1="2" x2="11" y2="13"></line>
+                      <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+                    </svg>
+                  </span>
+                </button>
+              </div>
+              <div class="chat-input-footer">
+                <span class="chat-hint">Press <strong>Enter</strong> to send &bull; <strong>Shift + Enter</strong> for a new line</span>
+                <span class="chat-disclaimer">Answers are grounded strictly in your document.</span>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+
+    </section>
+
+  </main>
+
+  <div id="toastContainer" class="toast-container"></div>
+
+  <!-- Footer -->
+  <footer class="app-footer">
+    <div class="footer-container">
+      <p class="footer-text"><strong>PDF Notes Generator</strong> • College Minor Project</p>
+      <div class="tech-tags">
+        <span class="tech-tag">FastAPI</span>
+        <span class="tech-tag">PyMuPDF</span>
+        <span class="tech-tag">Google Gemini</span>
+        <span class="tech-tag">Vanilla JS</span>
+      </div>
+    </div>
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>
